@@ -13,9 +13,11 @@ services:
   jupyter:
     build: ./jupyter
     command: jupyter notebook --ip=0.0.0.0 --allow-root
-    ports:
-      - 8877:8888
+    environment:
+      - NEO4J_AUTH
     volumes:
       - ./jupyter:/usr/src/app
+    ports:
+      - 8877:8888
     depends_on:
       - neo4j
