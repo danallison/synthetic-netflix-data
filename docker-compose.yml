@@ -1,0 +1,21 @@
+version: '3.1'
+services:
+  neo4j:
+    image: neo4j
+    restart: always
+    environment:
+      - NEO4J_AUTH
+    volumes:
+      - ./neo4j_volume:/data
+    ports:
+      - 7474:7474
+      - 7687:7687
+  jupyter:
+    build: ./jupyter
+    command: jupyter notebook --ip=0.0.0.0 --allow-root
+    ports:
+      - 8877:8888
+    volumes:
+      - ./jupyter:/usr/src/app
+    depends_on:
+      - neo4j
