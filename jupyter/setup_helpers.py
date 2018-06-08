@@ -8,12 +8,14 @@ from neo4j.v1 import GraphDatabase
 
 netflix_data_url = 'https://www.kaggle.com/netflix-inc/netflix-prize-data/downloads/netflix-prize-data.zip/1'
 data_dir = 'data'
-n4j_driver = GraphDatabase('bolt://neo4j:7687', auth=('neo4j', os.environ['NEO4J_AUTH']))
+n4j_driver = GraphDatabase.driver('bolt://neo4j:7687', auth=('neo4j', os.environ['NEO4J_AUTH'].split('/')[1]))
 
 def download_and_unzip_netflix_data():
-    print('downloading netflix data ...')
     path = '{}/netflix-prize-data.zip'.format(data_dir)
-    urlretrieve(netflix_data_url, filename=path)
+    # NOTE Cannot download from kaggle without logging in.
+    # This step must be done manually through a browser.
+    # print('downloading netflix data ...')
+    # urlretrieve(netflix_data_url, filename=path)
     with ZipFile(path, 'r') as zf:
         print('unzipping ...')
         zf.extractall(data_dir)
@@ -46,18 +48,24 @@ def create_movies():
                     tx.commit()
                     tx = None
                 if tx is None:
+                    print('processing movies {} to {}'.format(movie_id, movie_id + 999), end='\r')
                     tx = session.begin_transaction()
                 create_movie(tx, movie_id, year, title)
             tx.commit()
+    print('\ndone.')
 
 def create_ratings_and_real_users():
     def add_ratings(session, file):
         # This is not the most efficient way to import the data.
         # Room for improvement here.
+        tx = None
         for line in file:
             line = line.strip()
             if line[-1] == ':':
                 movie_id = int(line[:-1])
+                print('processing movie {}'.format(movie_id), end='\r')
+                if tx: tx.commit()
+                tx = session.begin_transaction()
             else:
                 values = line.split(',')
                 user_id = int(values[0])
@@ -69,8 +77,10 @@ def create_ratings_and_real_users():
                     'MERGE (user)-[:rated {rating: $rating, date: $date}]->(movie) ',
                     movie_id=movie_id, user_id=user_id, rating=rating, date=date
                 )
-    rating_files = ['combined_data_{}.txt'.format(i) for i in range(1, 5)]
-    with driver.session() as session:
+        tx.commit()
+    rating_files = ['data/combined_data_{}.txt'.format(i) for i in range(1, 5)]
+    with n4j_driver.session() as session:
         for file_path in rating_files:
             with open(file_path, 'r') as file:
                 add_ratings(session, file)
+    print('\ndone.')
