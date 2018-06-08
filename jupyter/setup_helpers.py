@@ -8,6 +8,7 @@ from neo4j.v1 import GraphDatabase
 
 netflix_data_url = 'https://www.kaggle.com/netflix-inc/netflix-prize-data/downloads/netflix-prize-data.zip/1'
 data_dir = 'data'
+rating_files = ['{}/combined_data_{}.txt'.format(data_dir, i) for i in range(1, 5)]
 n4j_driver = GraphDatabase.driver('bolt://neo4j:7687', auth=('neo4j', os.environ['NEO4J_AUTH'].split('/')[1]))
 
 def download_and_unzip_netflix_data():
@@ -36,7 +37,7 @@ def create_movies():
             movie_id=movie_id, year=year, title=title
         )
     # It is necessary to manually parse the csv as it is malformed
-    with open('data/movie_titles.csv', 'r', encoding='ISO-8859-1') as file:
+    with open('{}/movie_titles.csv'.format(data_dir), 'r', encoding='ISO-8859-1') as file:
         with n4j_driver.session() as session:
             tx = None
             for line in file:
@@ -54,11 +55,47 @@ def create_movies():
             tx.commit()
     print('\ndone.')
 
-def create_ratings_and_real_users():
+def create_real_users():
+    created_users = set()
+    def create_real_user(tx, user_id):
+        if user_id in created_users:
+            return False
+        else:
+            tx.run(
+                'CREATE (u:RealUser {user_id: $user_id}) ',
+                user_id=user_id
+            )
+            created_users.add(user_id)
+            return True
+    with n4j_driver.session() as session:
+        i = 1
+        tx = None
+        for file_path in rating_files:
+            with open(file_path, 'r') as file:
+                for line in file:
+                    line = line.strip()
+                    if line[-1] == ':':
+                        pass
+                    else:
+                        values = line.split(',')
+                        user_id = int(values[0])
+                        if (i % 1000) == 0:
+                            tx.commit()
+                            tx = None
+                        if tx is None:
+                            print('processing users {} to {}'.format(i, i + 999), end='\r')
+                            tx = session.begin_transaction()
+                        if create_real_user(tx, user_id):
+                            i += 1
+        tx.commit()
+    print('\ndone.')
+
+def create_ratings():
     def add_ratings(session, file):
         # This is not the most efficient way to import the data.
         # Room for improvement here.
         tx = None
+        tx_size = 0
         for line in file:
             line = line.strip()
             if line[-1] == ':':
@@ -71,14 +108,18 @@ def create_ratings_and_real_users():
                 user_id = int(values[0])
                 rating = int(values[1])
                 date = values[2]
-                session.run(
+                if tx_size > 999:
+                    tx.commit()
+                    tx = session.begin_transaction()
+                    tx_size = 0
+                tx.run(
                     'MATCH (movie:Movie) WHERE movie.movie_id = $movie_id '
-                    'MERGE (user:RealUser {user_id: $user_id}) '
-                    'MERGE (user)-[:rated {rating: $rating, date: $date}]->(movie) ',
+                    'MATCH (user:RealUser) WHERE user.user_id = $user_id '
+                    'CREATE (user)-[:rated {rating: $rating, date: $date}]->(movie) ',
                     movie_id=movie_id, user_id=user_id, rating=rating, date=date
                 )
+                tx_size += 1
         tx.commit()
-    rating_files = ['data/combined_data_{}.txt'.format(i) for i in range(1, 5)]
     with n4j_driver.session() as session:
         for file_path in rating_files:
             with open(file_path, 'r') as file:
