@@ -1,15 +1,13 @@
 '''
 NOTE: These helper functions should only be used once to get everything initialized.
 '''
-import os
 from urllib.request import urlretrieve
 from zipfile import ZipFile
-from neo4j.v1 import GraphDatabase
+from project_helpers import n4j_driver
 
 netflix_data_url = 'https://www.kaggle.com/netflix-inc/netflix-prize-data/downloads/netflix-prize-data.zip/1'
 data_dir = 'data'
 rating_files = ['{}/combined_data_{}.txt'.format(data_dir, i) for i in range(1, 5)]
-n4j_driver = GraphDatabase.driver('bolt://neo4j:7687', auth=('neo4j', os.environ['NEO4J_AUTH'].split('/')[1]))
 
 # NOTE Cannot download from kaggle without logging in.
 # This step must be done manually through a browser.
