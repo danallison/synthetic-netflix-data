@@ -5,6 +5,9 @@ services:
     restart: always
     environment:
       - NEO4J_AUTH
+      - NEO4J_dbms_memory_pagecache_size
+      - NEO4J_dbms_memory_heap_maxSize
+      - NEO4J_dbms_memory_heap_initialSize
     volumes:
       - ./neo4j_volume:/data
     ports:
@@ -13,8 +16,11 @@ services:
   jupyter:
     build: ./jupyter
     command: jupyter notebook --ip=0.0.0.0 --allow-root
+    # command: python process_nn.py
     environment:
       - NEO4J_AUTH
+      - START_INDEX
+      - STOP_INDEX
     volumes:
       - ./jupyter:/usr/src/app
     ports:
