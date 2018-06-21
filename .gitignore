@@ -1,6 +1,10 @@
 \.env
 \.ipynb_checkpoints/
 jupyter/data/
+pyspark/data/
+pyspark/spark-warehouse
+neighbors/
 neo4j_volume/
+neo4j_volume.tar.gz
 __pycache__/
 notes.txt

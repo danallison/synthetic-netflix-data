@@ -128,3 +128,21 @@ def create_ratings(starting_movie_id=1):
             with open(file_path, 'r') as file:
                 add_ratings(session, file)
     print('\ndone.')
+
+def create_ratings_csv():
+    def add_ratings(csv_file, raw_file):
+        for line in raw_file:
+            line = line.strip()
+            if line[-1] == ':':
+                movie_id = int(line[:-1])
+            else:
+                values = line.split(',')
+                user_id = int(values[0])
+                rating = int(values[1])
+                date = values[2]
+                csv_file.write('{},{},{},{}\n'.format(movie_id, user_id, rating, date))
+    with open('{}/ratings.csv'.format(data_dir), 'a') as csv_file:
+        for file_path in rating_files:
+            with open(file_path, 'r') as raw_file:
+                add_ratings(csv_file, raw_file)
+    print('\ndone.')

@@ -10,6 +10,7 @@ class TestSetupFunctions(unittest.TestCase):
         self.assertTrue(callable(create_movies))
         self.assertTrue(callable(create_real_users))
         self.assertTrue(callable(create_ratings))
+        self.assertTrue(callable(create_ratings_csv))
 
 if __name__ == '__main__':
     unittest.main()
